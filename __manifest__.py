@@ -1,26 +1,34 @@
 
 # -*- coding: utf-8 -*-
 {
-    'name': 'GS1 Variant Selector (Stock)',
-    'summary': 'Scan GS1 (AI 01/02) → find product by template Shared GTIN, open variant, create stock lines.',
-    'version': '19.0.1.2.0',
-    'category': 'Inventory/Barcode',
-    'author': 'Matthew Nunn',
-    'license': 'LGPL-3',
-    'depends': ['stock', 'product', 'stock_barcode'],
-    'data': [
-        'security/ir.model.access.csv',
-        'views/assets.xml',
+    "name": "GS1 Variant Selector (Stock)",
+    "version": "19.0.1.0.2",
+    "category": "Inventory/Barcode",
+    "summary": "Template-first GS1 scanning with variant selection for stock pickings",
+    "license": "LGPL-3",
+    "author": "mattlpsltd",
+    "website": "https://github.com/mattlpsltd/stock_gs1_variant_selector",
+    "depends": [
+        "web",
+        "product",
+        "stock",
+        "barcodes",
+        "stock_barcode",
     ],
-    'assets': {
-        'web.assets_backend': [
-            'stock_gs1_variant_selector/static/src/js/gs1_variant_selector.js',
+    "data": [
+        "views/product_template_views.xml",
+    ],
+    "assets": {
+        "web.assets_backend": [
+            "stock_gs1_variant_selector/static/src/js/gs1_variant_selector.js",
+            "stock_gs1_variant_selector/static/src/xml/gs1_variant_selector.xml",
         ],
-        # Include for barcode pages as well (harmless if bundle not defined)
-        'stock_barcode.assets_backend': [
-            'stock_gs1_variant_selector/static/src/js/gs1_variant_selector.js',
+        "stock_barcode.assets_backend": [
+            "stock_gs1_variant_selector/static/src/js/gs1_variant_selector.js",
+            "stock_gs1_variant_selector/static/src/xml/gs1_variant_selector.xml",
         ],
     },
-    'installable': True,
-    'application': False,
+    "post_init_hook": "post_init_hook",
+    "application": False,
+    "installable": True,
 }

@@ -1,61 +1,92 @@
 
 # -*- coding: utf-8 -*-
-import logging
 from odoo import http
 from odoo.http import request
+from datetime import datetime
 
-_logger = logging.getLogger(__name__)
+class GS1VariantSelector(http.Controller):
 
-class GS1ScanController(http.Controller):
+    @http.route('/stock_gs1_variant_selector/resolve', type='json', auth='user')
+    def resolve(self, gtin14=None, lot=None, expiry=None, picking_id=None, **kw):
+        if not gtin14 or not picking_id:
+            return {"error": "missing_params"}
 
-    @http.route('/stock_gs1_variant_selector/scan', type='json', auth='user')
-    def scan(self, barcode: str, picking_id: int):
-        """Apply a GS1 scan to the active picking (template-first lookup)."""
+        env = request.env
+        Picking = env['stock.picking'].sudo()
+        ProductT = env['product.template'].sudo()
+        Product = env['product.product'].sudo()
+        Move = env['stock.move'].sudo()
+        MoveLine = env['stock.move.line'].sudo()
+        LotModel = env['stock.production.lot'].sudo()
+
         try:
-            handler = request.env['stock_gs1_variant_selector.scan_handler']
-            return handler.handle_scan(barcode, picking_id)
+            picking = Picking.browse(int(picking_id))
         except Exception:
-            _logger.exception('GS1 scan handler failed')
-            return {'status': 'error', 'message': 'Internal error while processing scan'}
+            picking = Picking.browse(False)
+        if not picking.exists():
+            return {"error": "picking_not_found"}
 
-    @http.route('/stock_gs1_variant_selector/confirm', type='json', auth='user')
-    def confirm(self, variant_id: int, picking_id: int, ai: dict):
-        """Confirm the selected variant and apply GS1 AIs (37/15/10)."""
-        try:
-            handler = request.env['stock_gs1_variant_selector.scan_handler']
-            return handler.confirm_variant(variant_id, picking_id, ai)
-        except Exception:
-            _logger.exception('GS1 variant confirmation failed')
-            return {'status': 'error', 'message': 'Internal error while confirming variant'}
+        # Try canonical GTIN-14, fallback to legacy 13-digit value
+        gtin13 = gtin14.lstrip('0') if gtin14 and gtin14.startswith('0') else gtin14
+        tmpl = ProductT.search(['|', ('x_shared_barcode', '=', gtin14), ('x_shared_barcode', '=', gtin13)], limit=1)
+        if not tmpl:
+            return {"error": "template_not_found", "gtin14": gtin14}
 
-    @http.route('/stock_gs1_variant_selector/open_receipt', type='json', auth='user')
-    def open_receipt(self, barcode: str):
-        """From Receipts home, try to open an existing incoming picking by Shared GTIN."""
-        try:
-            helper = request.env['stock_gs1_variant_selector.gs1_helper']
-            ai = helper.parse_gs1(barcode or '')
-            gtin = (helper.get_lookup_gtin(ai) or '').strip()
-            tmpl = helper.find_template_by_shared_gtin(gtin)
+        variants = tmpl.product_variant_ids
+        if len(variants) > 1:
+            return {
+                "needs_variant_choice": True,
+                "template_id": tmpl.id,
+                "variant_ids": variants.ids,
+            }
 
-            if not tmpl and gtin:
-                variant = request.env['product.product'].search([('barcode', '=', gtin)], limit=1)
-                tmpl = variant.product_tmpl_id if variant else False
+        product = variants[:1]
+        if not product:
+            return {"error": "no_variant"}
 
-            if not tmpl:
-                return {'status': 'error', 'message': 'No template/variant for GTIN'}
+        # Create demand-only move (qty 1 by default)
+        move_vals = {
+            "name": product.display_name,
+            "product_id": product.id,
+            "product_uom": product.uom_id.id,
+            "product_uom_qty": 1.0,
+            "picking_id": picking.id,
+            "location_id": picking.location_id.id,
+            "location_dest_id": picking.location_dest_id.id,
+        }
+        move = Move.create(move_vals)
 
-            product_ids = tmpl.product_variant_ids.ids
-            Move = request.env['stock.move']
-            incoming_types = request.env['stock.picking.type'].search([('code', '=', 'incoming')]).ids
-            move = Move.search([
-                ('product_id', 'in', product_ids),
-                ('picking_id.picking_type_id', 'in', incoming_types),
-                ('picking_id.state', 'in', ['waiting', 'confirmed', 'assigned']),
-            ], limit=1)
-            if move:
-                picking = move.picking_id[:1]
-                return {'status': 'open_picking', 'picking_id': int(picking.id)}
-            return {'status': 'error', 'message': 'No receipts ready for this product'}
-        except Exception:
-            _logger.exception('open_receipt failed')
-            return {'status': 'error', 'message': 'Internal error while locating receipt'}
+        # If tracked, prepare lot and move line with qty_done=0
+        lot_id = None
+        if product.tracking != 'none' and lot:
+            lot_rec = LotModel.search([('name', '=', lot), ('product_id', '=', product.id)], limit=1)
+            if not lot_rec:
+                lot_vals = {"name": lot, "product_id": product.id}
+                if expiry:
+                    try:
+                        # AI(17) is YYMMDD
+                        dt = datetime.strptime(expiry, '%y%m%d').date()
+                        lot_vals["life_date"] = dt
+                    except Exception:
+                        pass
+                lot_rec = LotModel.create(lot_vals)
+            lot_id = lot_rec.id
+
+        MoveLine.create({
+            "move_id": move.id,
+            "product_id": product.id,
+            "picking_id": picking.id,
+            "location_id": picking.location_id.id,
+            "location_dest_id": picking.location_dest_id.id,
+            "product_uom_id": product.uom_id.id,
+            "qty_done": 0.0,
+            "lot_id": lot_id,
+        })
+
+        return {
+            "status": "ok",
+            "product_id": product.id,
+            "template_id": tmpl.id,
+            "move_id": move.id,
+            "lot_id": lot_id,
+        }

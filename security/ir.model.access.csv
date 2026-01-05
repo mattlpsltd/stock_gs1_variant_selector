@@ -1,4 +1,0 @@
-
-"id","name","model_id:id","group_id:id","perm_read","perm_write","perm_create","perm_unlink"
-"access_gs1_helper","GS1 Helper","model_stock_gs1_variant_selector_gs1_helper",,1,0,0,0
-"access_gs1_scan_handler","GS1 Scan Handler","model_stock_gs1_variant_selector_scan_handler",,1,1,1,0

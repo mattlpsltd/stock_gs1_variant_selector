@@ -1,3 +1,3 @@
 
-from . import gs1_helper
-from . import scan_handler
+from . import product_template
+from . import product_product

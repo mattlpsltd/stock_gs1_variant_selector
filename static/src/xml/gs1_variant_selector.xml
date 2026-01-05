@@ -1,0 +1,8 @@
+
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+    <!-- Placeholder for a variant selector dialog if you choose to implement one later -->
+    <t t-name="stock_gs1_variant_selector.dialog">
+        <div class="o_gs1_variant_selector"/>
+    </t>
+</templates>
