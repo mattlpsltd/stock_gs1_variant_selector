@@ -3,25 +3,29 @@
 
 import { registry } from '@web/core/registry';
 
-function startGs1Interceptor(env) {
-  const services = env.services || {};
-  const barcode = services.barcode;
-  const rpc     = services.rpc;
-  const user    = services.user;
-  const action  = services.action;
+/**
+ * GS1 interceptor as a service with explicit dependencies.
+ * Starts only after barcode/rpc/user/action are ready (solves "required services missing").
+ * Intercepts GS1 scans (AI 01/02) both on Receipts home and inside a Receipt form.
+ */
 
-  console.log('[GS1] service starting', { hasBarcode: !!barcode, hasRpc: !!rpc, ctx: user?.context });
+function isLikelyGS1(code) {
+  // Bracketed (01)/(02) or unbracketed starting with 01/02
+  return /\(0[12]\)/.test(code) || /^(01|02)/.test(code);
+}
 
-  if (!barcode || !rpc || !user) {
-    console.warn('[GS1] required services missing', { barcode: !!barcode, rpc: !!rpc, user: !!user });
-    return {};
-  }
+function createService(env, { barcode, rpc, user, action }) {
+  console.log('[GS1] service starting (deps ok)', {
+    hasBarcode: !!barcode, hasRpc: !!rpc, hasUser: !!user, ctx: user?.context,
+  });
 
-  const isLikelyGS1 = (code) => /(\(0[12]\)|^(01|02))/.test(code);
-  const activePickingId = () => (user.context?.active_model === 'stock.picking' ? user.context.active_id : null);
+  const activePickingId = () => (
+    user.context?.active_model === 'stock.picking' ? user.context.active_id : null
+  );
 
   async function handleScan(code) {
     const pickingId = activePickingId();
+
     if (pickingId) {
       console.debug('[GS1] inside picking → /scan', { pickingId, code });
       try {
@@ -55,12 +59,13 @@ function startGs1Interceptor(env) {
     }
   }
 
-  // 1) Barcode service bus listener
+  // 1) Barcode service bus listener (primary path)
   barcode.bus.addEventListener('barcode_scanned', async (ev) => {
     const code = ev.detail?.barcode || '';
     if (!isLikelyGS1(code)) return;
     console.debug('[GS1] bus event barcode_scanned', { code });
 
+    // Stop default while we decide; if we decline we’ll re‑emit
     ev.stopPropagation();
     const ok = await handleScan(code);
     if (!ok) {
@@ -84,9 +89,15 @@ function startGs1Interceptor(env) {
   }, { capture: true });
 
   console.log('[GS1] service started');
-  return {};
+  return {}; // service instance (not used further)
 }
 
-registry.category('services').add('gs1_interceptor', { start: startGs1Interceptor });
+// Register the service with explicit dependencies
+registry.category('services').add('gs1_interceptor', {
+  start: createService,
+  dependencies: ['barcode', 'rpc', 'user', 'action'],
+});
 
+// Convenience: prove asset is loaded
 console.log('[GS1] file loaded');
+``
