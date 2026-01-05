@@ -1,0 +1,44 @@
+
+<templates xml:space="preserve">
+  <t t-name="stock_gs1_variant_selector.VariantSelectorDialog">
+    <div class="o_gs1_variant_selector p-3">
+      <div class="mb-2">
+        <input type="text" class="form-control" t-model="state.search" placeholder="Search name, reference, or barcode"/>
+      </div>
+      <t t-if="state.loading">
+        <div class="text-muted py-4">Loading…</div>
+      </t>
+      <t t-else="">
+        <table class="o_list_view table table-sm table-hover">
+          <thead>
+            <tr>
+              <th style="width:2rem;"></th>
+              <th>Name</th>
+              <th>Internal Reference</th>
+              <th>Barcode</th>
+            </tr>
+          </thead>
+          <tbody>
+            <t t-foreach="filteredItems" t-as="item" t-key="item.id">
+              <tr t-on-click="() => select(item.id)" t-att-class="{'table-active': state.selectedId === item.id}">
+                <td>
+                  <input type="radio" t-att-checked="state.selectedId === item.id" t-on-click.stop="() => select(item.id)"/>
+                </td>
+                <td><t t-esc="item.display_name"/></td>
+                <td><t t-esc="item.default_code"/></td>
+                <td><t t-esc="item.barcode"/></td>
+              </tr>
+            </t>
+          </tbody>
+        </table>
+        <t t-if="!filteredItems.length">
+          <div class="text-muted py-2">No variants match your search.</div>
+        </t>
+      </t>
+      <div class="d-flex justify-content-end gap-2 mt-3">
+        <button type="button" class="btn btn-secondary" t-on-click="cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" t-att-disabled="state.loading || !state.selectedId" t-on-click="confirm">Add</button>
+      </div>
+    </div>
+  </t>
+</templates>

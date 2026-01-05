@@ -1,0 +1,18 @@
+
+<odoo>
+  <record id="view_product_template_form_inherit_barcode_editable" model="ir.ui.view">
+    <field name="name">product.template.form.inherit.barcode.editable</field>
+    <field name="model">product.template</field>
+    <field name="inherit_id" ref="product.product_template_form_view"/>
+    <field name="priority" type="int">21</field>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='name']" position="after">
+        <group string="Identifiers">
+          <field name="barcode"/>
+          <field name="x_shared_barcode" placeholder="Shared GTIN for template (variant selector on scan)"/>
+          <label for="x_shared_barcode" string="Use the shared GTIN to identify this template; scanning it will prompt to choose a variant."/>
+        </group>
+      </xpath>
+    </field>
+  </record>
+</odoo>
