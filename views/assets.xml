@@ -1,0 +1,7 @@
+
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <!-- Keep JS in assets via manifest 'assets' key; file kept for clarity/overrides if needed. -->
+  </data>
+</odoo>
