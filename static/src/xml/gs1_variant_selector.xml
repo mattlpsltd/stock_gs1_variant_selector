@@ -1,8 +1,44 @@
 
-<?xml version="1.0" encoding="utf-8"?>
 <templates xml:space="preserve">
-    <!-- Placeholder for a variant selector dialog if you choose to implement one later -->
-    <t t-name="stock_gs1_variant_selector.dialog">
-        <div class="o_gs1_variant_selector"/>
-    </t>
+  <t t-name="stock_gs1_variant_selector.VariantSelector">
+    <div class="o_gs1_variant_selector">
+      <div class="o_form_view o_form_nosheet">
+        <div class="o_group">
+          <h3 t-out="props.title or 'Select Variant'"/>
+          <p class="text-muted" t-if="props.subtitle" t-out="props.subtitle"/>
+          <p class="mb-2">
+            <span>Select the correct product variant for GTIN </span>
+            <code t-out="props.gtin14"/>
+          </p>
+          <table class="table table-sm table-hover">
+            <thead>
+              <tr>
+                <th>Variant</th>
+                <th>Attributes</th>
+                <th class="text-end">UoM</th>
+                <th class="text-end">Select</th>
+              </tr>
+            </thead>
+            <tbody>
+              <t t-foreach="props.variants" t-as="v">
+                <tr>
+                  <td><span t-out="v.display_name"/></td>
+                  <td><span t-if="v.attribute_string" t-out="v.attribute_string"/></td>
+                  <td class="text-end"><span t-out="v.uom_name"/></td>
+                  <td class="text-end">
+                    <button class="btn btn-primary btn-sm" t-on-click="() => props.onSelect(v)">Choose</button>
+                  </td>
+                </tr>
+              </t>
+            </tbody>
+          </table>
+          <div class="alert alert-info" t-if="props.lot or props.expiry or props.qty">
+            <div t-if="props.qty">Qty (AI 37): <strong t-out="props.qty"/></div>
+            <div t-if="props.lot">Lot (AI 10): <strong t-out="props.lot"/></div>
+            <div t-if="props.expiry">Expiry (AI 17 YYMMDD): <strong t-out="props.expiry"/></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </t>
 </templates>
