@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "GS1 Variant Selector (Stock)",
-    "version": "19.0.2.1.0",
+    "version": "19.0.2.1.2",
     "category": "Inventory/Barcode",
     "summary": "Template-first GS1-128 scanning with variant selection dialog for stock pickings",
     "license": "LGPL-3",
